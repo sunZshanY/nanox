@@ -1,0 +1,24 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# IDE files
+.vs/
+.vscode/
+.idea/
+
+# Compiled artifacts
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.lib
+*.dll
+*.dylib
+
+# CMake
+CMakeUserPresets.json
+CMakeCache.txt
+CMakeFiles/
