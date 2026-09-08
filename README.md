@@ -76,6 +76,7 @@ To just dump the token stream of a file, use `lexer_dump`:
 
 ```sh
 ./build/examples/lexer_dump examples/hello.nx
+
 ```
 
 ## Sample syntax (v1)
@@ -122,3 +123,7 @@ See `docs/lexer.md` and `docs/editor.md` for the design rationale and roadmap.
 - Modular development: one module at a time, with tests before moving on.
 - No hidden errors: the lexer reports problems, it never silently skips them.
 - Readability and clear architecture over cleverness.
+
+## LICENCE 
+
+This LICENCE is GNU General Public License v2.0 
