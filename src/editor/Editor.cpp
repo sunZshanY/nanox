@@ -3,12 +3,15 @@
 #include "nanox/Lexer.h"
 #include "nanox/Project.h"
 #include "nanox/TokenKind.h"
+#include "nanox/editor/CommandParser.h"
+#include "nanox/editor/Keymap.h"
 
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <sstream>
 #include <utility>
 
@@ -113,6 +116,23 @@ std::string truncate(std::string s, std::size_t width) {
 }
 
 // Truncates to `width` cells and pads with spaces to exactly `width` cells.
+// Parses a plain non-negative decimal, used by the "line,column" prompt.
+// Deliberately not std::stoi: a rejected input must be reported, not thrown.
+bool parse_decimal(const std::string& text, int& out) {
+    if (text.empty() || text.size() > 9) {
+        return false;
+    }
+    int value = 0;
+    for (const char c : text) {
+        if (c < '0' || c > '9') {
+            return false;
+        }
+        value = value * 10 + (c - '0');
+    }
+    out = value;
+    return true;
+}
+
 std::string cell(const std::string& text, int width) {
     std::string out = truncate(text, static_cast<std::size_t>(width));
     append_repeat(out, " ", width - static_cast<int>(display_width(out)));
@@ -125,8 +145,10 @@ const char* severity_name(Severity severity) {
 
 }  // namespace
 
-Editor::Editor(std::string workspace, std::string open_file, std::string initial_text)
+Editor::Editor(std::string workspace, std::string open_file, std::string initial_text,
+               EditingMode mode)
     : workspace_(std::move(workspace)), tree_(FileTree::scan(workspace_)) {
+    set_editing_mode(mode);
     OpenFile first;
     if (!open_file.empty()) {
         first.path = open_file;
@@ -163,6 +185,13 @@ int Editor::run() {
         }
         if (key.kind == Key::Kind::Function) {
             handle_function_key(key.param);
+            continue;
+        }
+        // The editing keymap is live only while the editor pane has focus; the
+        // tree and output panels keep their own plain navigation keys, and the
+        // global ^S/^Q/^T shortcuts below still work from any pane.
+        if (focus_ == Focus::Editor) {
+            feed_editor_key(key);
             continue;
         }
         if (key.kind == Key::Kind::Ctrl) {
@@ -322,8 +351,12 @@ void Editor::render() {
     out += "┐\r\n";
 
     out += "│ ";
-    out += "NanoX 0.1.0";
-    out += " ";
+    // The editing state sits next to the version: NORMAL / INSERT / COMMAND for
+    // Vim and Hybrid, EDITOR for nano (which has no modes).
+    const std::string mode_text =
+        std::string("[") + std::string(editor_mode_name(editing_mode_, editor_mode_)) + "]";
+    const std::string prefix = "NanoX 0.1.0 " + mode_text + " ";
+    out += prefix;
     std::string project_name = fs::path(workspace_).filename().string();
     if (project_name.empty()) {
         project_name = workspace_;  // e.g. workspace is "C:\" or "/"
@@ -331,10 +364,11 @@ void Editor::render() {
     const std::string file_name =
         cur.path.empty() ? "(untitled)" : fs::path(cur.path).filename().string();
     const std::string mid = project_name + " / " + file_name;
-    // Fixed prefix "│ NanoX 0.1.0 " = 14 cells; suffix " " + status + " │" =
-    // status + 3 cells; total must be cols = inner_w + 2. Widths are cells,
-    // not bytes ('●' is 1 cell / 3 bytes).
-    int avail = inner_w - 15 - static_cast<int>(display_width(status));
+    // Row = "│ " + prefix + mid + padding + " " + status + " │" = cols = inner_w
+    // + 2, so mid and its padding share inner_w - 3 - prefix - status cells.
+    // Widths are cells, not bytes ('●' is 1 cell / 3 bytes).
+    int avail = inner_w - 3 - static_cast<int>(display_width(prefix)) -
+                static_cast<int>(display_width(status));
     if (avail < 0) {
         avail = 0;
     }
@@ -593,7 +627,8 @@ void Editor::render() {
     if (prompt_mode_) {
         bar = prompt_text_ + " " + prompt_input_;
     } else {
-        bar = "F1 Help  F2 Files  F3 Build  F4 Run  F5 REPL  F6 Output  ^Q Quit";
+        // Never hardcoded here: the hint follows the editing mode and state.
+        bar = footer_text();
     }
     out += "│ ";
     out += cell(bar, inner_w - 1);
@@ -644,26 +679,46 @@ void Editor::render_help() {
     std::string out;
     out += "\x1b[?25l\x1b[H\x1b[2J";
 
-    const std::vector<std::string> lines = {
+    std::vector<std::string> lines = {
         "NanoX 0.1.0 — Help",
         "",
-        "F1  Help            F5  REPL",
-        "F2  File tree       F6  Output",
-        "F3  Build           ^S  Save current file",
-        "F4  Run             ^T  Next tab",
-        "                     ^W  Close tab",
-        "                     ^Q / ^C  Quit",
+        std::string("Editing mode: ") + std::string(editing_mode_name(editing_mode_)) +
+            "   state: " + std::string(editor_mode_name(editing_mode_, editor_mode_)),
+        "F8 cycles Vim -> Nano -> Hybrid, or use  :set mode <vim|nano|hybrid>",
         "",
-        "Explorer: Up/Down select, Enter open, Right expand, Left collapse",
-        "Editor:   type, arrows, Home/End, PgUp/PgDn, Tab = 4 spaces",
-        "Output:   PgUp/PgDn scroll",
-        "REPL:     Enter lexes the line, Esc leaves the REPL",
+        "Global",
+        "  F1 Help        F4 Run         F6 Output",
+        "  F2 File tree   F5 REPL        F8 Editing mode",
+        "  F3 Build       ^Q / ^C Quit",
         "",
-        "Phase 1: 'Build' runs the Lexer over every *.nx file in the project.",
-        "Run, the AST viewer and the IR viewer arrive with later phases.",
-        "",
-        "press any key to close",
     };
+
+    // The key list is generated from the live keymap, so the help can never
+    // drift from the bindings that actually exist in this mode.
+    const std::vector<std::pair<std::string, std::string>> bindings =
+        keymap_.bindings_for(editing_mode_, editor_mode_);
+    if (bindings.empty()) {
+        lines.push_back("  (no keys bound in this state)");
+    } else {
+        lines.push_back(std::string("Keys in ") +
+                        std::string(editor_mode_name(editing_mode_, editor_mode_)) + ":");
+        for (const std::pair<std::string, std::string>& binding : bindings) {
+            const std::size_t pad =
+                binding.first.size() < 14 ? 14 - binding.first.size() : 1;
+            lines.push_back("  " + binding.first + std::string(pad, ' ') + binding.second);
+        }
+    }
+
+    lines.push_back("");
+    lines.push_back("Explorer: Up/Down select, Enter open, Right expand, Left collapse");
+    lines.push_back("Output:   PgUp/PgDn scroll");
+    lines.push_back("REPL:     Enter lexes the line, Esc leaves the REPL");
+    lines.push_back("");
+    lines.push_back("Phase 1: 'Build' runs the Lexer over every *.nx file in the project.");
+    lines.push_back("Run, the AST viewer and the IR viewer arrive with later phases.");
+    lines.push_back("");
+    lines.push_back("press any key to close");
+
     for (const std::string& line : lines) {
         out += line;
         out += "\x1b[K\r\n";
@@ -689,19 +744,340 @@ void Editor::handle_ctrl_key(char ch) {
 }
 
 void Editor::handle_function_key(unsigned n) {
+    // Function keys stay global (they work from every pane), but they still go
+    // through the command layer rather than calling actions directly.
     switch (n) {
-        case 1: help_visible_ = true; break;
-        case 2:
-            focus_ = focus_ == Focus::Explorer ? Focus::Editor : Focus::Explorer;
-            break;
-        case 3: do_build(); break;
-        case 4: do_run(); break;
-        case 5: enter_repl(); break;
-        case 6:
-            focus_ = focus_ == Focus::Output ? Focus::Editor : Focus::Output;
-            break;
+        case 1: execute(Command::Help); break;
+        case 2: execute(Command::ToggleExplorer); break;
+        case 3: execute(Command::Build); break;
+        case 4: execute(Command::Run); break;
+        case 5: execute(Command::Repl); break;
+        case 6: execute(Command::ToggleOutput); break;
+        case 8: execute(Command::CycleEditingMode); break;
         default: break;
     }
+}
+
+// ---------------------------------------------------------------------------
+// Command layer
+// ---------------------------------------------------------------------------
+
+std::string Editor::footer_text() const {
+    return Keymap::footer_hint(editing_mode_, editor_mode_);
+}
+
+void Editor::set_editing_mode(EditingMode mode) {
+    editing_mode_ = mode;
+    // Vim opens in NORMAL (that is what makes it Vim); Nano has no other state
+    // to be in; Hybrid opens ready to type and leaves via ESC.
+    editor_mode_ =
+        (mode == EditingMode::Vim) ? EditorMode::Normal : EditorMode::Insert;
+    keymap_.reset_pending();
+}
+
+void Editor::cycle_editing_mode() {
+    switch (editing_mode_) {
+        case EditingMode::Vim:    set_editing_mode(EditingMode::Nano);   break;
+        case EditingMode::Nano:   set_editing_mode(EditingMode::Hybrid); break;
+        case EditingMode::Hybrid: set_editing_mode(EditingMode::Vim);    break;
+    }
+    note("editing mode: " + std::string(editing_mode_name(editing_mode_)));
+}
+
+void Editor::set_editor_mode(EditorMode mode) {
+    // Nano never leaves its single editing state.
+    editor_mode_ = (editing_mode_ == EditingMode::Nano) ? EditorMode::Insert : mode;
+    keymap_.reset_pending();
+}
+
+void Editor::feed_editor_key(const Key& key) {
+    const KeyChord chord = KeyChord::from_key(key);
+    Command command = Command::None;
+
+    switch (keymap_.feed(editing_mode_, editor_mode_, chord, command)) {
+        case Keymap::Match::Pending:
+            return;  // first half of "dd"/"yy": nothing to do yet
+        case Keymap::Match::Complete:
+            execute(command);
+            return;
+        case Keymap::Match::None:
+            break;
+    }
+
+    // An unbound key still types and moves the cursor while editing; in NORMAL
+    // it is deliberately inert, which is the entire point of the mode.
+    if (editing_mode_ == EditingMode::Nano || editor_mode_ == EditorMode::Insert) {
+        editor_key(key);
+    }
+}
+
+void Editor::execute(Command command) {
+    // Note: buffer_of_current() is re-fetched per branch rather than hoisted,
+    // because close/quit commands can erase the tab it would point at.
+    switch (command) {
+        case Command::None:
+            break;
+
+        // --- files, tabs, application ----------------------------------------
+        case Command::Save:
+            save_current();
+            break;
+        case Command::WriteOut:
+            start_prompt(PromptKind::WriteOut, "File Name to Write:",
+                         files_[current_file_].path);
+            break;
+        case Command::Quit:
+            request_quit();
+            break;
+        case Command::ForceQuit:
+            quit_ = true;
+            break;
+        case Command::SaveAndQuit:
+            save_current();
+            if (!any_dirty()) {
+                quit_ = true;
+            }
+            break;
+        case Command::CloseTab:
+            close_current_tab_or_quit();
+            break;
+        case Command::NextTab:
+            switch_tab(1);
+            break;
+        case Command::CycleEditingMode:
+            cycle_editing_mode();
+            break;
+        case Command::SetEditingMode:
+            break;  // reached only via ":" / ":set mode", which carries the name
+
+        // --- panels -----------------------------------------------------------
+        case Command::Help:
+            help_visible_ = true;
+            break;
+        case Command::Build:
+            do_build();
+            break;
+        case Command::Run:
+            do_run();
+            break;
+        case Command::Repl:
+            enter_repl();
+            break;
+        case Command::ToggleOutput:
+            focus_ = focus_ == Focus::Output ? Focus::Editor : Focus::Output;
+            break;
+        case Command::ToggleExplorer:
+            focus_ = focus_ == Focus::Explorer ? Focus::Editor : Focus::Explorer;
+            break;
+
+        // --- editing ----------------------------------------------------------
+        case Command::Undo:
+            buffer_of_current().undo();
+            break;
+        case Command::Redo:
+            buffer_of_current().redo();
+            break;
+        case Command::CutLine:
+        case Command::DeleteLine:
+            cut_line();
+            break;
+        case Command::CopyLine:
+        case Command::YankLine:
+            copy_line();
+            break;
+        case Command::Paste:
+        case Command::PasteBefore:
+            paste_clipboard(false);
+            break;
+        case Command::PasteAfter:
+            paste_clipboard(true);
+            break;
+        case Command::Search:
+            start_prompt(PromptKind::Search, "Search:");
+            break;
+        case Command::Replace:
+            start_prompt(PromptKind::ReplaceSearch, "Search:");
+            break;
+        case Command::GoToLine:
+            start_prompt(PromptKind::GoToLine, "Go To Line (line,column):");
+            break;
+
+        // --- mode transitions --------------------------------------------------
+        case Command::EnterNormal:
+            set_editor_mode(EditorMode::Normal);
+            break;
+        case Command::EnterCommandMode:
+            // start_prompt first: it records the mode to return to, which must
+            // be the one we are leaving, not Command itself.
+            start_prompt(PromptKind::ExCommand, ":");
+            set_editor_mode(EditorMode::Command);
+            break;
+        case Command::VimInsert:
+            set_editor_mode(EditorMode::Insert);
+            break;
+        case Command::VimAppend:
+            buffer_of_current().move_right();
+            set_editor_mode(EditorMode::Insert);
+            break;
+        case Command::VimInsertLineStart:
+            buffer_of_current().move_home();
+            set_editor_mode(EditorMode::Insert);
+            break;
+        case Command::VimAppendLineEnd:
+            buffer_of_current().move_end();
+            set_editor_mode(EditorMode::Insert);
+            break;
+        case Command::VimOpenBelow:
+            buffer_of_current().insert_line_below();
+            set_editor_mode(EditorMode::Insert);
+            break;
+        case Command::VimOpenAbove:
+            buffer_of_current().insert_line_above();
+            set_editor_mode(EditorMode::Insert);
+            break;
+
+        // --- motion ------------------------------------------------------------
+        case Command::MoveLeft:  buffer_of_current().move_left();  break;
+        case Command::MoveDown:  buffer_of_current().move_down();  break;
+        case Command::MoveUp:    buffer_of_current().move_up();    break;
+        case Command::MoveRight: buffer_of_current().move_right(); break;
+        case Command::LineStart: buffer_of_current().move_home();  break;
+        case Command::LineEnd:   buffer_of_current().move_end();   break;
+
+        // --- operators ----------------------------------------------------------
+        case Command::DeleteChar:
+            buffer_of_current().delete_char();
+            break;
+        case Command::DeleteToEnd:
+            buffer_of_current().delete_to_end_of_line();
+            break;
+    }
+}
+
+void Editor::run_ex_command(const std::string& line) {
+    const ParsedCommand parsed = parse_ex_command(line);
+    if (!parsed.ok) {
+        if (!line.empty()) {
+            note("error: not a command: " + line);
+        }
+        return;
+    }
+    // ":set mode" and ":w <file>" carry an argument the generic dispatch has no
+    // place for, so they are handled here rather than in execute().
+    if (parsed.command == Command::SetEditingMode) {
+        const std::optional<EditingMode> mode = editing_mode_from_string(parsed.arg);
+        if (mode.has_value()) {
+            set_editing_mode(*mode);
+            note("editing mode: " + std::string(editing_mode_name(*mode)));
+        }
+        return;
+    }
+    if (parsed.command == Command::Save && !parsed.arg.empty()) {
+        write_out_to(parsed.arg);
+        return;
+    }
+    execute(parsed.command);
+}
+
+// --- editing actions used by execute() -------------------------------------
+
+void Editor::close_current_tab_or_quit() {
+    // ^X means "leave" in nano. With no other tab open there is nothing left to
+    // edit, so it quits rather than leaving an empty buffer behind.
+    if (files_.size() <= 1) {
+        request_quit();
+        return;
+    }
+    close_tab(current_file_);
+}
+
+void Editor::cut_line() {
+    clipboard_.text = buffer_of_current().delete_current_line();
+    clipboard_.linewise = true;
+    note("cut 1 line");
+}
+
+void Editor::copy_line() {
+    clipboard_.text = buffer_of_current().yank_line();
+    clipboard_.linewise = true;
+    note("copied 1 line");
+}
+
+void Editor::paste_clipboard(bool after) {
+    // An untouched register is empty and not linewise; a cut empty line is
+    // empty but linewise, and must still paste a blank line.
+    if (clipboard_.text.empty() && !clipboard_.linewise) {
+        note("clipboard is empty");
+        return;
+    }
+
+    TextBuffer& buffer = buffer_of_current();
+    if (clipboard_.linewise) {
+        const int at = buffer.row() + (after ? 1 : 0);
+        buffer.insert_line_at(at, clipboard_.text);
+        buffer.set_cursor(at, 0);
+        return;
+    }
+    if (after) {
+        buffer.move_right();  // Vim's p pastes after the character under the cursor
+    }
+    buffer.insert_text(clipboard_.text);
+}
+
+void Editor::search_for(const std::string& needle) {
+    if (needle.empty()) {
+        note("search: empty pattern");
+        return;
+    }
+    last_search_ = needle;
+    note(buffer_of_current().find_forward(needle) ? "found: " + needle
+                                                  : "not found: " + needle);
+}
+
+void Editor::replace_all(const std::string& needle, const std::string& replacement) {
+    if (needle.empty()) {
+        note("replace: empty search pattern");
+        return;
+    }
+    last_search_ = needle;
+    const std::size_t count =
+        buffer_of_current().replace_all_forward(needle, replacement);
+    note("replaced " + std::to_string(count) + " occurrence(s) of \"" + needle +
+         "\" with \"" + replacement + "\"");
+}
+
+void Editor::goto_line(const std::string& text) {
+    const std::size_t comma = text.find(',');
+    const std::string row_text = text.substr(0, comma);
+    const std::string col_text =
+        (comma == std::string::npos) ? std::string() : text.substr(comma + 1);
+
+    int row = 0;
+    int col = 1;
+    if (!parse_decimal(row_text, row) ||
+        (!col_text.empty() && !parse_decimal(col_text, col))) {
+        note("go to line: expected \"line,column\"");
+        return;
+    }
+    // Input is 1-based ("line 1" is the first line) and the buffer is 0-based.
+    // The cursor is clamped, so an out-of-range line lands on the last one.
+    buffer_of_current().set_cursor(row - 1, col - 1);
+}
+
+void Editor::write_out_to(const std::string& path) {
+    if (path.empty()) {
+        return;
+    }
+    OpenFile& file = files_[current_file_];
+    const std::string previous = file.path;
+    // The path has to be set before saving (that is what save_file writes to),
+    // but a failed write must not leave the buffer pointing at a new target.
+    file.path = path;
+    if (!save_file(file)) {
+        file.path = previous;
+        return;
+    }
+    tree_ = FileTree::scan(workspace_);  // a new file may have appeared
 }
 
 void Editor::editor_key(const Key& key) {
@@ -832,10 +1208,14 @@ void Editor::output_key(const Key& key) {
     }
 }
 
-void Editor::start_prompt(PromptKind kind, std::string prompt) {
+void Editor::start_prompt(PromptKind kind, std::string prompt, std::string prefill) {
+    if (!prompt_mode_) {
+        // Remember where we were: a prompt is a detour, not a mode change.
+        prompt_return_mode_ = editor_mode_;
+    }
     prompt_kind_ = kind;
     prompt_text_ = std::move(prompt);
-    prompt_input_.clear();
+    prompt_input_ = std::move(prefill);
     prompt_mode_ = true;
 }
 
@@ -843,6 +1223,9 @@ void Editor::finish_prompt() {
     prompt_mode_ = false;
     prompt_kind_ = PromptKind::None;
     prompt_input_.clear();
+    // Back to the state that opened the prompt (NORMAL after ":", INSERT after
+    // nano's ^W); set_editor_mode keeps nano pinned to its single state.
+    set_editor_mode(prompt_return_mode_);
 }
 
 void Editor::handle_prompt_key(const Key& key) {
@@ -851,8 +1234,13 @@ void Editor::handle_prompt_key(const Key& key) {
         case K::Enter: {
             const std::string input = prompt_input_;
             const bool yes = !input.empty() && (input[0] == 'y' || input[0] == 'Y');
+            // Read the kind BEFORE finish_prompt() resets it to None. Switching
+            // on prompt_kind_ after that call always matched None, which is why
+            // SaveAs never wrote and Ctrl+Q could not quit a modified buffer.
+            const PromptKind kind = prompt_kind_;
             finish_prompt();
-            switch (prompt_kind_) {
+
+            switch (kind) {
                 case PromptKind::ConfirmQuit:
                     quit_ = yes;
                     break;
@@ -862,11 +1250,28 @@ void Editor::handle_prompt_key(const Key& key) {
                     }
                     break;
                 case PromptKind::SaveAs:
-                    if (!input.empty()) {
-                        files_[current_file_].path = input;
-                        save_file(files_[current_file_]);
-                        tree_ = FileTree::scan(workspace_);
-                    }
+                case PromptKind::WriteOut:
+                    // Same action: "save as" and nano's ^O both name the target
+                    // then write through the one path that handles failure.
+                    write_out_to(input);
+                    break;
+                case PromptKind::Search:
+                    search_for(input);
+                    break;
+                case PromptKind::ReplaceSearch:
+                    // Ask for the replacement before touching the buffer.
+                    pending_replace_ = input;
+                    start_prompt(PromptKind::ReplaceWith, "Replace with:");
+                    break;
+                case PromptKind::ReplaceWith:
+                    replace_all(pending_replace_, input);
+                    pending_replace_.clear();
+                    break;
+                case PromptKind::GoToLine:
+                    goto_line(input);
+                    break;
+                case PromptKind::ExCommand:
+                    run_ex_command(input);
                     break;
                 case PromptKind::None:
                     break;

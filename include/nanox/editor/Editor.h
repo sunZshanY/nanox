@@ -2,6 +2,8 @@
 
 #include "nanox/Diagnostic.h"
 #include "nanox/FileTree.h"
+#include "nanox/editor/Command.h"
+#include "nanox/editor/Keymap.h"
 #include "nanox/editor/Terminal.h"
 #include "nanox/editor/TextBuffer.h"
 
@@ -33,11 +35,19 @@ namespace nanox::editor {
 // All terminal differences live in Terminal; all editing invariants live in
 // TextBuffer; the project model lives in FileTree/Project. Editor only wires
 // them together and owns the panel/focus state.
+// Key handling is deliberately indirect: the TUI never compares a key against a
+// literal. Every key press goes Keymap -> Command, and every command is carried
+// out in one place (execute()). EditingMode/EditorMode select which part of the
+// keymap is live and which footer hint is shown, so adding a mode or rebinding a
+// key never means touching the rendering code.
 class Editor {
 public:
     // `workspace` is the project root (shown in the tree and title bar).
     // `open_file` (optional) is loaded into the first tab; empty = untitled.
-    Editor(std::string workspace, std::string open_file, std::string initial_text);
+    // `mode` selects the editing mode; Vim opens in NORMAL, Nano and Hybrid in
+    // INSERT (Nano has no other state).
+    Editor(std::string workspace, std::string open_file, std::string initial_text,
+           EditingMode mode = EditingMode::Vim);
     ~Editor();
 
     Editor(const Editor&) = delete;
@@ -49,13 +59,32 @@ public:
 private:
     enum class Focus { Explorer, Editor, Output };
     enum class OutputMode { Normal, Repl };
-    enum class PromptKind { None, SaveAs, ConfirmQuit, ConfirmClose };
+    enum class PromptKind {
+        None,
+        SaveAs,
+        WriteOut,       // ^O: "File Name to Write:"
+        ConfirmQuit,
+        ConfirmClose,
+        Search,         // ^W
+        ReplaceSearch,  // ^\ step 1 ("Search:")
+        ReplaceWith,    // ^\ step 2 ("Replace with:")
+        GoToLine,       // ^_ ("line,column")
+        ExCommand,      // :  ^P
+    };
 
     struct OpenFile {
         std::string path;   // empty = untitled buffer
         TextBuffer buffer;
         int first_row = 0;  // per-file viewport
         int first_col = 0;
+    };
+
+    // The yank/cut buffer shared by nano's ^K/^U and Vim's dd/yy/p. `linewise`
+    // records whether a paste inserts whole lines (dd, yy) or inline text (^K
+    // on a partial line, Vim x).
+    struct Register {
+        std::string text;
+        bool linewise = false;
     };
 
     struct Span {
@@ -76,7 +105,33 @@ private:
     void explorer_key(const Key& key);
     void output_key(const Key& key);
 
-    void start_prompt(PromptKind kind, std::string prompt);
+    // --- command layer -------------------------------------------------------
+    // Resolves `key` through the keymap for the current state and carries out
+    // whatever it maps to. Every key is consumed here while the editor pane has
+    // focus, including one that is only a pending prefix ("d" of "dd").
+    void feed_editor_key(const Key& key);
+    // The single place a Command is carried out.
+    void execute(Command command);
+    void set_editing_mode(EditingMode mode);
+    void cycle_editing_mode();
+    void set_editor_mode(EditorMode mode);
+    // Runs a ":" line; reports unknown commands in the output panel.
+    void run_ex_command(const std::string& line);
+    // Footer text for the current state (delegates to Keymap::footer_hint).
+    std::string footer_text() const;
+
+    // --- editing actions used by execute() -----------------------------------
+    void write_out_to(const std::string& path);
+    void cut_line();
+    void copy_line();
+    void paste_clipboard(bool after);
+    void close_current_tab_or_quit();
+    void search_for(const std::string& needle);
+    void replace_all(const std::string& needle, const std::string& replacement);
+    void goto_line(const std::string& text);
+
+    // `prefill` seeds the input line (^O offers the current path, like nano).
+    void start_prompt(PromptKind kind, std::string prompt, std::string prefill = {});
     void finish_prompt();
     void note(const std::string& line);
     TextBuffer& buffer_of_current() { return files_[current_file_].buffer; }
@@ -118,6 +173,15 @@ private:
     OutputMode output_mode_ = OutputMode::Normal;
     bool last_build_failed_ = false;
 
+    // Editing mode state. Nano keeps editor_mode_ at Insert for its whole
+    // lifetime; only Vim and Hybrid ever leave it.
+    EditingMode editing_mode_ = EditingMode::Vim;
+    EditorMode editor_mode_ = EditorMode::Normal;
+    Keymap keymap_;
+    Register clipboard_;
+    std::string last_search_;      // reused as the default for ^\ and n-style repeats
+    std::string pending_replace_;  // ^\ step 1, consumed by step 2
+
     bool help_visible_ = false;
     bool quit_ = false;
 
@@ -126,6 +190,8 @@ private:
     std::string prompt_text_;
     std::string prompt_input_;
     std::size_t pending_close_ = 0;
+    // The state to restore when the prompt closes (see finish_prompt).
+    EditorMode prompt_return_mode_ = EditorMode::Normal;
 
     // Per-render lexer state for the current file.
     std::vector<Diagnostic> diagnostics_;
