@@ -53,10 +53,52 @@ public:
     void backspace();
     void delete_char();
 
+    // --- line-level editing (nano ^K, Vim dd / yy / o / O / D) --------------
+    // delete_current_line() and yank_line() hand the affected text back so the
+    // editor can keep it in the clipboard; the buffer owns no clipboard itself.
+    std::string delete_current_line();
+    std::string yank_line() const;
+    void delete_to_end_of_line();
+    void insert_line_above();
+    void insert_line_below();
+    void insert_line_at(int index, std::string text);  // linewise paste
+
+    // --- search (nano ^W / ^\) -------------------------------------------------
+    // Both are plain substring, case-sensitive, and never cross a line break
+    // (a needle containing '\n' is rejected).
+    // find_forward() moves the cursor to the first match at or after it and
+    // wraps to the top when there is none below; returns false (cursor
+    // unchanged) when the needle is absent from the whole buffer.
+    bool find_forward(const std::string& needle);
+    // Replaces every match at or after the cursor. Returns the count; the
+    // cursor lands on the first replacement. One undo step for the whole pass.
+    std::size_t replace_all_forward(const std::string& needle,
+                                    const std::string& replacement);
+
+    // --- undo / redo ---------------------------------------------------------
+    // Snapshot based. Consecutive character inserts coalesce into a single undo
+    // unit, so undoing a typed word takes one step rather than one per letter;
+    // any other edit starts a new unit. History is capped (oldest dropped).
+    bool can_undo() const { return !undo_.empty(); }
+    bool can_redo() const { return !redo_.empty(); }
+    void undo();
+    void redo();
+
     bool dirty() const { return dirty_; }
-    void mark_clean() { dirty_ = false; }
+    void mark_clean();
 
 private:
+    // The state a change replaced; restoring one is an undo step.
+    struct Snapshot {
+        std::vector<std::string> lines;
+        int row = 0;
+        int col = 0;
+    };
+
+    void record_undo(bool continues_typing);
+    // True when the buffer is back at the state mark_clean() last recorded.
+    bool at_saved_state() const;
+
     void clamp_cursor();
     std::string& current_line() { return lines_[static_cast<std::size_t>(row_)]; }
     const std::string& current_line() const { return lines_[static_cast<std::size_t>(row_)]; }
@@ -65,6 +107,13 @@ private:
     int row_ = 0;
     int col_ = 0;
     bool dirty_ = false;
+
+    std::vector<Snapshot> undo_;
+    std::vector<Snapshot> redo_;
+    std::size_t saved_depth_ = 0;  // undo depth when the buffer was last clean
+    bool typing_ = false;          // the previous edit was a character insert
+    int typing_row_ = -1;          // ...at this position, so the next one joins it
+    int typing_col_ = -1;
 };
 
 }  // namespace nanox::editor
