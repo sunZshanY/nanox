@@ -12,8 +12,15 @@ namespace nanox::editor {
 // A single input event, normalized across platforms.
 //
 // Ctrl keys arrive as kind == Ctrl with `ch` set to the lowercase letter
-// ('a'..'z'), e.g. Ctrl+S is {Ctrl, 's'}. This is identical on Windows and
-// POSIX, so the rest of the editor never needs platform code.
+// ('a'..'z'), e.g. Ctrl+S is {Ctrl, 's'}. The punctuation controls carry their
+// base character instead: Ctrl+\ is {Ctrl, '\\'}, Ctrl+_ is {Ctrl, '_'} (which
+// is also what Ctrl+/ sends). Alt keys arrive as kind == Alt with the lowercase
+// letter or digit, e.g. Alt+U is {Alt, 'u'}, Alt+6 is {Alt, '6'}. This is
+// identical on Windows and POSIX, so the rest of the editor never needs
+// platform code.
+//
+// Escape and Alt are unambiguous here even though POSIX sends both as a bare
+// ESC byte: see read_escape_sequence(), which disambiguates with a short poll.
 struct Key {
     enum class Kind : std::uint8_t {
         None,
@@ -31,7 +38,8 @@ struct Key {
         PageUp,
         PageDown,
         Function, // F1..F12, number in `param`
-        Ctrl,     // control combination, letter in `ch`
+        Ctrl,     // control combination, base character in `ch`
+        Alt,      // Alt + letter/digit, lowercase character in `ch`
         Escape,
         Unknown,  // a recognized-but-unhandled sequence
         Resize,   // terminal size changed while waiting for input

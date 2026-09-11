@@ -1,6 +1,8 @@
 #include "nanox/editor/Terminal.h"
 
+#include <cctype>
 #include <cstdio>
+#include <string>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -33,6 +35,51 @@ Key make_key(Key::Kind kind, char ch = 0, unsigned param = 0) {
     key.param = param;
     return key;
 }
+
+// Maps a raw control byte to the character it is "Ctrl +" of.
+//
+// 1..26 are Ctrl+A..Ctrl+Z. The punctuation controls sit just above them and are
+// the reason this cannot be a simple 'a' + c - 1: Ctrl+\ is 0x1C, Ctrl+] 0x1D,
+// Ctrl+^ 0x1E and Ctrl+_ 0x1F (which is also what Ctrl+/ sends). Without these
+// four, nano's ^\ (Replace) and ^_ (Go To Line) would never reach the keymap.
+bool ctrl_char_for(int c, char& out) {
+    if (c >= 1 && c <= 26) {
+        out = static_cast<char>('a' + c - 1);
+        return true;
+    }
+    switch (c) {
+        case 28: out = '\\'; return true;
+        case 29: out = ']'; return true;
+        case 30: out = '^'; return true;
+        case 31: out = '_'; return true;
+        default: return false;
+    }
+}
+
+#ifdef _WIN32
+// Windows reports Alt+<key> as a 0x00 prefix followed by the key's scan code,
+// the same codes the plain key would produce. Only the letter and digit codes
+// are listed: navigation and function keys are matched before this is consulted.
+char alt_char_for_scan(int scan) {
+    switch (scan) {
+        case 16: return 'q'; case 17: return 'w'; case 18: return 'e';
+        case 19: return 'r'; case 20: return 't'; case 21: return 'y';
+        case 22: return 'u'; case 23: return 'i'; case 24: return 'o';
+        case 25: return 'p';
+        case 30: return 'a'; case 31: return 's'; case 32: return 'd';
+        case 33: return 'f'; case 34: return 'g'; case 35: return 'h';
+        case 36: return 'j'; case 37: return 'k'; case 38: return 'l';
+        case 44: return 'z'; case 45: return 'x'; case 46: return 'c';
+        case 47: return 'v'; case 48: return 'b'; case 49: return 'n';
+        case 50: return 'm';
+        case 2: return '1'; case 3: return '2'; case 4: return '3';
+        case 5: return '4'; case 6: return '5'; case 7: return '6';
+        case 8: return '7'; case 9: return '8'; case 10: return '9';
+        case 11: return '0';
+        default: return 0;
+    }
+}
+#endif
 
 }  // namespace
 
@@ -104,8 +151,9 @@ Key Terminal::read_key() {
         if (c == 27) {
             return make_key(Key::Kind::Escape);
         }
-        if (c >= 1 && c <= 26) {
-            return make_key(Key::Kind::Ctrl, static_cast<char>('a' + c - 1));
+        char ctrl = 0;
+        if (ctrl_char_for(c, ctrl)) {
+            return make_key(Key::Kind::Ctrl, ctrl);
         }
         return make_key(Key::Kind::Char, static_cast<char>(c & 0xFF));
     }
@@ -151,6 +199,12 @@ Key Terminal::read_key() {
         if (scan >= 59 && scan <= 68) {  // F1..F10
             return make_key(Key::Kind::Function, 0, static_cast<unsigned>(scan - 58));
         }
+        // Alt + letter/digit arrives as the same 0x00 prefix, so this is the
+        // only place Alt can be recovered on Windows.
+        const char alt = alt_char_for_scan(scan);
+        if (alt != 0) {
+            return make_key(Key::Kind::Alt, alt);
+        }
         return make_key(Key::Kind::Unknown);
     }
     if (c == '\r' || c == '\n') {
@@ -165,8 +219,9 @@ Key Terminal::read_key() {
     if (c == 27) {
         return make_key(Key::Kind::Escape);
     }
-    if (c >= 1 && c <= 26) {
-        return make_key(Key::Kind::Ctrl, static_cast<char>('a' + c - 1));
+    char ctrl = 0;
+    if (ctrl_char_for(c, ctrl)) {
+        return make_key(Key::Kind::Ctrl, ctrl);
     }
     if (c < 0) {
         return make_key(Key::Kind::Eof);
@@ -270,7 +325,17 @@ Key Terminal::read_escape_sequence() {
         }
     }
     if (next != '[') {
-        return make_key(Key::Kind::Escape);  // Alt+key: treat as plain Escape
+        // ESC followed by a printable character is Alt+<char>: on POSIX a
+        // terminal sends Alt as an ESC prefix, so this is the only place it can
+        // be recovered. The two are told apart by the poll in try_read_byte --
+        // a bare ESC is followed by nothing and was already returned above as
+        // Escape, so a lone Escape key press stays responsive.
+        if (next >= 0x20 && next < 0x7F) {
+            const char lowered =
+                static_cast<char>(std::tolower(static_cast<unsigned char>(next)));
+            return make_key(Key::Kind::Alt, lowered);
+        }
+        return make_key(Key::Kind::Escape);
     }
 
     char param = 0;
@@ -376,8 +441,9 @@ Key Terminal::read_key() {
     if (c == 127 || c == 8) {  // DEL or Ctrl+H are both Backspace
         return make_key(Key::Kind::Backspace);
     }
-    if (c >= 1 && c <= 26) {
-        return make_key(Key::Kind::Ctrl, static_cast<char>('a' + c - 1));
+    char ctrl = 0;
+    if (ctrl_char_for(c, ctrl)) {
+        return make_key(Key::Kind::Ctrl, ctrl);
     }
     if (c == 27) {
         return read_escape_sequence();
