@@ -55,6 +55,9 @@ nanox_set_warnings(nanox_core)
 add_library(nanox_editor
     src/editor/TextBuffer.cpp
     src/editor/Terminal.cpp
+    src/editor/Command.cpp
+    src/editor/Keymap.cpp
+    src/editor/CommandParser.cpp
     src/editor/Editor.cpp
 )
 add_library(nanox::editor ALIAS nanox_editor)
