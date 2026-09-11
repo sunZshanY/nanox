@@ -43,6 +43,14 @@ cmake -S . -B build
 cmake --build build
 ```
 
+If several C++ compilers are installed, CMake picks whichever it finds first,
+and that one may not be set up to link (LLVM's `clang++` next to MinGW's `g++`
+on Windows is a common pairing). Name the compiler explicitly in that case:
+
+```sh
+cmake -S . -B build -DCMAKE_CXX_COMPILER=g++
+```
+
 Run the tests:
 
 ```sh
