@@ -24,7 +24,8 @@ be introduced after the interpreter milestone is solid.
 nanox/
 ├── CMakeLists.txt
 ├── include/nanox/        # core headers (SourceLocation, Token, Lexer, FileTree, Project)
-├── include/nanox/editor/ # editor headers (TextBuffer, Terminal, Editor)
+├── include/nanox/editor/ # editor headers (TextBuffer, Terminal, Editor,
+│                         #   Keymap, Command, CommandParser)
 ├── src/                  # core implementation
 ├── src/editor/           # editor implementation
 ├── tests/                # unit tests (dependency-free mini framework)
@@ -55,22 +56,34 @@ Start the IDE-style editor:
 build\examples\nanox.exe                # Windows
 ./build/examples/nanox examples/hello.nx       # open a file
 ./build/examples/nanox path/to/project-dir     # open a project
+./build/examples/nanox --mode=nano examples/hello.nx   # GNU nano key bindings
 ```
 
-The TUI has a project explorer, multi-file editor tabs, syntax highlighting
-and diagnostics from the Lexer:
+The TUI has a project explorer, multi-file editor tabs, syntax highlighting and
+diagnostics from the Lexer. Three editing modes are available — **Vim**
+(modal, the default), **Nano** (GNU nano keys, always editing) and **Hybrid**
+(opens editing, `ESC` gives Vim's NORMAL). Pick one with `--mode=`, cycle with
+**F8**, or use `:set mode <vim|nano|hybrid>`; the footer always shows the keys
+that are live right now.
 
 | Key      | Action                                    |
 |----------|-------------------------------------------|
-| F1       | Help overlay                              |
+| F1       | Help overlay (lists the current mode's keys) |
 | F2       | Focus the project explorer                |
 | F3       | Build: lexer pass over all `*.nx` files   |
 | F4       | Run (arrives with the interpreter phase)  |
 | F5       | REPL (lexer-level)                        |
 | F6       | Focus the OUTPUT panel                    |
+| F8       | Cycle editing mode: vim → nano → hybrid   |
 | Ctrl+S   | Save current file                         |
-| Ctrl+T / Ctrl+W | Next / close tab                  |
+| Ctrl+T   | Next tab                                  |
 | Ctrl+Q / Ctrl+C | Quit (confirms unsaved changes)   |
+
+In Vim mode that is `i a o O h j k l x dd yy p P u Ctrl+R :w :q :wq :q!`; in
+Nano mode `Ctrl+O` save, `Ctrl+X` exit, `Ctrl+W` search, `Ctrl+\` replace,
+`Ctrl+K`/`Ctrl+U` cut/paste, `Ctrl+G` help, `Ctrl+_` go to line, `Alt+U`/`Alt+E`
+undo/redo, `Alt+6` copy. See [docs/editor.md](docs/editor.md) for the full
+tables and how the conflicting keys are resolved (`Ctrl+W`, `Ctrl+R`).
 
 To just dump the token stream of a file, use `lexer_dump`:
 
@@ -112,7 +125,8 @@ while x > 0 {
 - `FileTree` / `Project` — project browsing and the Phase 1 "build"
   (lexer pass over every `*.nx` file).
 - `nanox` CLI — IDE-style TUI (project explorer, tabs, OUTPUT panel, REPL,
-  F1-F6 keys); this will grow into the full driver in later phases.
+  Vim / Nano / Hybrid editing modes behind a keymap + command layer); this will
+  grow into the full driver in later phases.
 - Editor toolkit — `TextBuffer` (pure editing logic, fully unit-tested),
   `Terminal` (Windows/POSIX platform abstraction), `Editor` (TUI rendering).
 
