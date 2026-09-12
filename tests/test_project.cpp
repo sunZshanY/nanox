@@ -140,6 +140,16 @@ NX_TEST_CASE(discover_root_of_a_missing_path_stays_in_its_parent) {
     NX_CHECK_EQ(Project::discover_root((t.path / "missing").string()), t.path.string());
 }
 
+NX_TEST_CASE(discover_root_of_dot_has_a_clean_filename) {
+    // Regression: on libstdc++ absolute(".") is "<cwd>/." and the returned
+    // path kept the dot element (or a trailing separator), so the editor
+    // title showed "." as the project name.
+    const std::string root = Project::discover_root(".");
+    NX_CHECK(!root.empty());
+    NX_CHECK(!fs::path(root).filename().empty());
+    NX_CHECK(fs::path(root).filename() != ".");
+}
+
 NX_TEST_CASE(discover_root_finds_nanox_toml) {
     nanox_test::TempDir t("nanox_root");
     t.write_file("nanox.toml", "[project]\n");

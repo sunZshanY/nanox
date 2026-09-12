@@ -43,6 +43,15 @@ std::string Project::discover_root(const std::string& start) {
     if (ec) {
         return start;
     }
+    // libstdc++ builds absolute(".") as current_path()/"." — e.g.
+    // "/root/demo/." — and that trailing dot element would show up as the
+    // project name ("."). Normalize it away; lexically_normal() removes the
+    // dot but can keep a trailing separator ("/root/demo/"), which would make
+    // filename() empty, so drop that too.
+    current = current.lexically_normal();
+    if (current.filename().empty() && current.has_parent_path()) {
+        current = current.parent_path();
+    }
 
     // `nanox.toml` is the one and only project marker. We deliberately do NOT
     // treat an unrelated CMakeLists.txt as a marker: walking up from an
