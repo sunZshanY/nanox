@@ -1,5 +1,9 @@
 # NanoX
 
+<p align="center">
+  <img src="site/assets/logo.svg" alt="NanoX logo" width="96" height="96">
+</p>
+
 A small, modern, easy-to-learn programming language and its compiler, built
 from scratch in C++17.
 
@@ -163,6 +167,14 @@ See `docs/lexer.md` and `docs/editor.md` for the design rationale and roadmap.
 - Modular development: one module at a time, with tests before moving on.
 - No hidden errors: the lexer reports problems, it never silently skips them.
 - Readability and clear architecture over cleverness.
+
+## Website
+
+A self-contained static landing page (bilingual English / 简体中文) lives in
+[`site/`](site/): `index.html`, `assets/` and a Cloudflare Pages `_headers`
+file. It has no build step and no external dependencies, so it can be deployed
+to Cloudflare Pages either by pointing the project's output directory at
+`site/` or by uploading that folder directly. Nothing in it depends on GitHub.
 
 ## LICENCE 
 

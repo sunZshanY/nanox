@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NanoX — a small, modern language &amp; terminal editor</title>
+  <meta name="description" content="NanoX is an easy-to-learn programming language and an IDE-style terminal editor, built from scratch in C++17.">
+  <meta name="theme-color" content="#070b14">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="assets/styles.css">
+  <meta property="og:title" content="NanoX">
+  <meta property="og:description" content="A small, modern programming language and its terminal editor, built from scratch in C++17.">
+  <meta property="og:type" content="website">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="#top">
+      <img src="assets/logo.svg" alt="NanoX logo" width="34" height="34">
+      <span class="brand-name">NanoX</span>
+    </a>
+    <nav class="nav">
+      <a href="#features"><span class="en">Features</span><span class="zh">特性</span></a>
+      <a href="#syntax"><span class="en">Syntax</span><span class="zh">语法</span></a>
+      <a href="#start"><span class="en">Get started</span><span class="zh">开始使用</span></a>
+      <a href="#roadmap"><span class="en">Roadmap</span><span class="zh">路线图</span></a>
+    </nav>
+    <button id="lang-toggle" class="lang-btn" type="button" aria-label="Switch language">中文</button>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="badge">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="en">Phase 1 · Lexer complete</span>
+          <span class="zh">第一阶段 · 词法分析完成</span>
+        </span>
+        <h1>
+          <span class="en">A small, modern language &mdash; and its editor.</span>
+          <span class="zh">一门小巧、现代的语言，以及它的编辑器。</span>
+        </h1>
+        <p class="lead">
+          <span class="en">NanoX is an easy-to-learn programming language and an IDE-style terminal editor, built from scratch in C++17.</span>
+          <span class="zh">NanoX 是一门易学的编程语言，也是一个 IDE 风格的终端编辑器，完全使用 C++17 从零构建。</span>
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="#start"><span class="en">Get started</span><span class="zh">开始使用</span></a>
+          <a class="btn ghost" href="#syntax"><span class="en">Explore the syntax</span><span class="zh">浏览语法</span></a>
+        </div>
+      </div>
+
+      <div class="hero-term" aria-hidden="true">
+        <pre class="term"><span class="cy">NanoX 0.1.0</span> · TUI
+┌────────────────────────────────────────────────────────────┐
+│ <span class="cy">NanoX 0.1.0</span> [NORMAL]  examples / hello.nx          <span class="ok">●</span> Ready │
+├──────────────────┬─────────────────────────────────────────┤
+│PROJECT           │ hello.nx                                │
+│▾ examples        │1  <span class="k">fn</span> main() {                           │
+│  hello.nx        │2      <span class="k">println</span>(<span class="s">&quot;Hello, NanoX!&quot;</span>);         │
+│                  │3  }                                     │
+│                  │                                         │
+├──────────────────┴─────────────────────────────────────────┤
+│ OUTPUT                                                     │
+│ <span class="ok">✓</span> Build succeeded — 12 token(s)                            │
+├────────────────────────────────────────────────────────────┤
+│ ^P Commands  ^B Build  F4 Run  F8 Mode  ^Q Quit            │
+└────────────────────────────────────────────────────────────┘</pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="section">
+    <div class="wrap">
+      <p class="kicker"><span class="en">Why NanoX</span><span class="zh">为什么选择 NanoX</span></p>
+      <h2><span class="en">Small, readable, built in the open</span><span class="zh">小巧、易读、公开构建</span></h2>
+
+      <div class="cards">
+        <article class="card">
+          <div class="card-icon">λ</div>
+          <h3><span class="en">From-scratch lexer</span><span class="zh">从零实现的词法分析器</span></h3>
+          <p>
+            <span class="en">Tokens carry a precise <code>line:column</code> location. Zero-copy lexemes, full error recovery, and diagnostics that never silently skip a problem.</span>
+            <span class="zh">每个记号都带有精确的 <code>行:列</code> 位置。零拷贝词素、完整的错误恢复，诊断信息绝不悄悄跳过问题。</span>
+          </p>
+        </article>
+
+        <article class="card">
+          <div class="card-icon">⌨</div>
+          <h3><span class="en">Three editing modes</span><span class="zh">三种编辑模式</span></h3>
+          <p>
+            <span class="en">Vim, GNU&nbsp;nano and a Hybrid mode live behind one keymap layer. Cycle with <kbd>F8</kbd> or <code>:set mode</code>.</span>
+            <span class="zh">Vim、GNU nano 与混合模式共用一套快捷键层。用 <kbd>F8</kbd> 或 <code>:set mode</code> 切换。</span>
+          </p>
+        </article>
+
+        <article class="card">
+          <div class="card-icon">▤</div>
+          <h3><span class="en">IDE-style terminal UI</span><span class="zh">IDE 风格的终端界面</span></h3>
+          <p>
+            <span class="en">Project explorer, multi-file tabs, an OUTPUT panel and a lexer-level REPL &mdash; all in the terminal.</span>
+            <span class="zh">项目浏览器、多文件标签、OUTPUT 面板与词法级 REPL &mdash; 全部运行在终端里。</span>
+          </p>
+        </article>
+
+        <article class="card">
+          <div class="card-icon">字</div>
+          <h3><span class="en">UTF-8 aware layout</span><span class="zh">支持 UTF-8 的布局</span></h3>
+          <p>
+            <span class="en">A compact East Asian width table keeps every frame aligned, even with CJK file names, paths and source code.</span>
+            <span class="zh">内置紧凑的东亚字符宽度表，即使文件名、路径与源码包含中文，边框也始终对齐。</span>
+          </p>
+        </article>
+
+        <article class="card">
+          <div class="card-icon">⎈</div>
+          <h3><span class="en">Cross-platform</span><span class="zh">跨平台</span></h3>
+          <p>
+            <span class="en">Linux, macOS and Windows, with dedicated POSIX and Windows terminal backends behind one interface.</span>
+            <span class="zh">支持 Linux、macOS 与 Windows，统一的接口背后是各自的 POSIX 与 Windows 终端实现。</span>
+          </p>
+        </article>
+
+        <article class="card">
+          <div class="card-icon">⬢</div>
+          <h3><span class="en">Ready to package</span><span class="zh">开箱即用的打包</span></h3>
+          <p>
+            <span class="en">CPack produces TGZ and ZIP everywhere plus a <code>.deb</code> on Linux, with Homebrew, Scoop and AUR manifests.</span>
+            <span class="zh">CPack 可生成 TGZ 与 ZIP，Linux 上还有 <code>.deb</code>，并附带 Homebrew、Scoop 与 AUR 清单。</span>
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="syntax" class="section alt">
+    <div class="wrap two-col">
+      <div>
+        <p class="kicker"><span class="en">The language</span><span class="zh">语言</span></p>
+        <h2><span class="en">Familiar, tiny, and easy to read</span><span class="zh">熟悉、精简、易于阅读</span></h2>
+        <p class="muted">
+          <span class="en">The first milestone is a classic compiler pipeline: <strong>Lexer → Parser → AST → Interpreter</strong>. LLVM code generation is explicitly out of scope until the interpreter is solid.</span>
+          <span class="zh">第一个里程碑是一条经典的编译管线：<strong>词法分析 → 语法分析 → AST → 解释器</strong>。在解释器稳定之前，LLVM 代码生成明确不在范围内。</span>
+        </p>
+        <ul class="ticks">
+          <li><span class="en">Integers, floats, strings and booleans</span><span class="zh">整数、浮点数、字符串与布尔值</span></li>
+          <li><span class="en">Functions with typed parameters and return values</span><span class="zh">带类型参数与返回值函数</span></li>
+          <li><span class="en"><code>if</code> / <code>while</code> control flow</span><span class="zh"><code>if</code> / <code>while</code> 控制流</span></li>
+          <li><span class="en">Line and block comments</span><span class="zh">行注释与块注释</span></li>
+        </ul>
+      </div>
+      <div class="code-block">
+        <div class="code-head"><span></span><span></span><span></span> hello.nx</div>
+<pre><code><span class="k">fn</span> main() {
+    println(<span class="s">"Hello, NanoX!"</span>);
+}
+
+<span class="k">let</span> x: <span class="t">int</span> = <span class="n">10</span>;
+
+<span class="k">fn</span> add(a: <span class="t">int</span>, b: <span class="t">int</span>) -&gt; <span class="t">int</span> {
+    <span class="k">return</span> a + b;
+}
+
+<span class="k">if</span> x &gt; <span class="n">5</span> {
+    println(x);
+}
+
+<span class="k">while</span> x &gt; <span class="n">0</span> {
+    x = x - <span class="n">1</span>;
+}</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="start" class="section">
+    <div class="wrap two-col">
+      <div>
+        <p class="kicker"><span class="en">Get started</span><span class="zh">开始使用</span></p>
+        <h2><span class="en">Build it in three commands</span><span class="zh">三条命令即可构建</span></h2>
+        <p class="muted">
+          <span class="en">Requirements: CMake 3.20+ and any C++17 compiler. If several compilers are installed, pick one explicitly with <code>-DCMAKE_CXX_COMPILER</code>.</span>
+          <span class="zh">环境要求：CMake 3.20+ 以及任意 C++17 编译器。若安装了多个编译器，可用 <code>-DCMAKE_CXX_COMPILER</code> 明确指定。</span>
+        </p>
+        <div class="btn-row">
+          <a class="btn primary" href="#roadmap"><span class="en">See the roadmap</span><span class="zh">查看路线图</span></a>
+        </div>
+      </div>
+      <div class="code-block">
+        <div class="code-head"><span></span><span></span><span></span> shell</div>
+<pre><code><span class="c"># configure &amp; build</span>
+cmake -S . -B build
+cmake --build build
+
+<span class="c"># run the tests</span>
+ctest --test-dir build --output-on-failure
+
+<span class="c"># launch the editor</span>
+./build/examples/nanox examples/hello.nx</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="roadmap" class="section alt">
+    <div class="wrap">
+      <p class="kicker"><span class="en">Roadmap</span><span class="zh">路线图</span></p>
+      <h2><span class="en">One module at a time, tests first</span><span class="zh">一次一个模块，测试先行</span></h2>
+      <ol class="timeline">
+        <li class="done">
+          <span class="mark">✓</span>
+          <h3><span class="en">Phase 1 — Lexer</span><span class="zh">第一阶段 — 词法分析</span></h3>
+          <p><span class="en">Token system, precise locations, diagnostics and the lexer-level TUI.</span><span class="zh">记号系统、精确定位、诊断信息，以及词法级的 TUI。</span></p>
+        </li>
+        <li>
+          <span class="mark">2</span>
+          <h3><span class="en">Phase 2 — Parser &amp; AST</span><span class="zh">第二阶段 — 语法分析与 AST</span></h3>
+          <p><span class="en">Recursive-descent parsing and an AST viewer in the editor.</span><span class="zh">递归下降解析，并在编辑器中提供 AST 查看器。</span></p>
+        </li>
+        <li>
+          <span class="mark">3</span>
+          <h3><span class="en">Phase 3 — Interpreter</span><span class="zh">第三阶段 — 解释器</span></h3>
+          <p><span class="en">Tree-walking evaluation, and a working <kbd>F4</kbd> Run.</span><span class="zh">树遍历求值，让 <kbd>F4</kbd> 运行真正可用。</span></p>
+        </li>
+        <li>
+          <span class="mark">4</span>
+          <h3><span class="en">Beyond — Code generation</span><span class="zh">未来 — 代码生成</span></h3>
+          <p><span class="en">LLVM is planned only after the interpreter milestone is solid.</span><span class="zh">只有在解释器里程碑稳固之后，才会考虑 LLVM。</span></p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <img src="assets/logo.svg" alt="" width="26" height="26">
+      <span>NanoX 0.1.0</span>
+    </div>
+    <p class="footer-meta">
+      <span class="en">Built from scratch in C++17 · Licensed under GPL-2.0</span>
+      <span class="zh">完全使用 C++17 从零构建 · 采用 GPL-2.0 许可</span>
+    </p>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
