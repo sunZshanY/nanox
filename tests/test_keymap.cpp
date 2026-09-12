@@ -349,3 +349,23 @@ NX_TEST_CASE(bindings_for_reports_the_live_state_only) {
     }
     NX_CHECK(has_write_out);
 }
+
+NX_TEST_CASE(default_bindings_have_no_duplicate_chords_per_state) {
+    // The spec's "verify no key conflicts" requirement: inside one
+    // EditingMode/EditorMode state every key sequence resolves to exactly one
+    // command. (Cross-state overlaps like ^R = Redo in Vim NORMAL and Run in
+    // Nano are deliberate and covered by their own tests.)
+    const Keymap keymap;
+    int duplicates = 0;
+    for (const KeyBinding& a : keymap.bindings()) {
+        for (const KeyBinding& b : keymap.bindings()) {
+            if (&a == &b) {
+                continue;
+            }
+            if (a.editing == b.editing && a.editor == b.editor && a.chords == b.chords) {
+                ++duplicates;
+            }
+        }
+    }
+    NX_CHECK_EQ(duplicates, 0);
+}
