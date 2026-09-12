@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo-icon.svg" width="50" height="50" alt="NanoX logo">
+</p>
+
 # NanoX
 
 <p align="center">

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" role="img" aria-label="NanoX">
+  <!-- GitHub social preview (1280x640). Upload from repository Settings -> Social preview. -->
+  <rect width="1280" height="640" fill="#0D1117"/>
+
+  <g transform="translate(496 130) scale(4.5)" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="11" width="46" height="42" rx="7" fill="none" stroke="#E6EDF3" stroke-width="3.5"/>
+    <path d="M16.5 40 V21 L31.5 40 V21" fill="none" stroke="#E6EDF3" stroke-width="5"/>
+    <path d="M40 34.5 L44.5 39 L40 43.5" fill="none" stroke="#58A6FF" stroke-width="3.5"/>
+    <path d="M45.5 43.5 H50" fill="none" stroke="#58A6FF" stroke-width="3.5"/>
+  </g>
+
+  <text x="640" y="510" text-anchor="middle"
+        font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="84" font-weight="600" letter-spacing="20" fill="#E6EDF3">NANOX</text>
+  <text x="642" y="566" text-anchor="middle"
+        font-family="'SFMono-Regular', Consolas, 'DejaVu Sans Mono', Menlo, monospace"
+        font-size="28" letter-spacing="16" fill="#8B949E">CLI / TUI</text>
+</svg>
