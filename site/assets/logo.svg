@@ -1,26 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="t">
-  <title id="t">NanoX</title>
-  <defs>
-    <linearGradient id="nx-grad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#22d3ee"/>
-      <stop offset="0.5" stop-color="#38bdf8"/>
-      <stop offset="1" stop-color="#a855f7"/>
-    </linearGradient>
-    <linearGradient id="nx-face" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0b1220"/>
-      <stop offset="1" stop-color="#131c31"/>
-    </linearGradient>
-  </defs>
-
-  <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#nx-face)"/>
-  <rect x="4" y="4" width="120" height="120" rx="30" fill="none"
-        stroke="url(#nx-grad)" stroke-width="4"/>
-
-  <circle cx="27" cy="30" r="5" fill="#f87171"/>
-  <circle cx="45" cy="30" r="5" fill="#fbbf24"/>
-  <circle cx="63" cy="30" r="5" fill="#34d399"/>
-
-  <path d="M29 60 L44 74 L29 88" fill="none" stroke="url(#nx-grad)"
-        stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="55" y="80" width="44" height="9" rx="4.5" fill="#e5e7eb"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="NanoX">
+  <rect width="64" height="64" rx="14" fill="#0D1117"/>
+  <rect x="9" y="11" width="46" height="42" rx="7" fill="none" stroke="#E6EDF3" stroke-width="3.5"/>
+  <path d="M16.5 40 V21 L31.5 40 V21" fill="none" stroke="#E6EDF3" stroke-width="5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M40 34.5 L44.5 39 L40 43.5" fill="none" stroke="#58A6FF" stroke-width="3.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M45.5 43.5 H50" fill="none" stroke="#58A6FF" stroke-width="3.5" stroke-linecap="round"/>
 </svg>
