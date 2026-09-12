@@ -54,11 +54,14 @@ Linux, Windows, and macOS with just CMake + a C++17 compiler.
 
 ### Project root discovery
 
-`nanox` walks up from the start directory looking for `nanox.toml` (falling
-back to `CMakeLists.txt`) and opens that directory as the project. Running
-`nanox` from inside `build/` therefore opens the real project instead of
-showing CMake artifacts; `build/`, `out/`, `cmake-build-*` and dot-folders
-are never displayed in the tree anyway.
+`nanox` walks up from the start directory looking for `nanox.toml`, the project
+marker, and opens that directory as the project. Running `nanox` from inside
+`build/` therefore opens the real project instead of showing CMake artifacts;
+`build/`, `out/`, `cmake-build-*` and dot-folders are never displayed in the
+tree anyway. Without a marker anywhere up the tree, the start directory itself
+is the project. (An unrelated `CMakeLists.txt` is deliberately **not** a
+marker: attaching to whatever parent happens to contain one — a home
+directory, for example — would mean scanning a huge tree as a "project".)
 
 ### Resize handling
 
@@ -311,7 +314,7 @@ Where the two editing traditions disagree, the resolution is:
 | IR viewer | later (after code generation) |
 | Editing modes | done: Vim / Nano / Hybrid, selectable with `--mode`, F8, or `:set mode` |
 | Keymap / plugin API | the `Keymap` layer already speaks names — `keymap.bind("normal", "Ctrl+S", "save")` — and `Command` has a stable name for every action, so `nanox.keymap(...)` / `nanox.command(...)` need a script host, not a redesign. That host arrives with the Lua plugin phase. |
-| Settings / `nanox.toml` | not created automatically; a `nanox.toml` (or `CMakeLists.txt`) is used for project-root discovery |
+| Settings / `nanox.toml` | `nanox.toml` is the project-root marker today; settings keys are planned |
 
 ## Known limitations (by design, v1)
 

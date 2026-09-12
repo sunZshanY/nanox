@@ -17,6 +17,18 @@ namespace fs = std::filesystem;
 
 Project::Project(std::string root) : root_(std::move(root)) {}
 
+std::string Project::resolve_source_path(const std::string& path) {
+    std::error_code ec;
+    if (fs::exists(fs::path(path), ec) && !ec) {
+        return path;
+    }
+    const fs::path candidate(path);
+    if (!candidate.has_extension()) {
+        return candidate.string() + ".nx";
+    }
+    return path;
+}
+
 std::string Project::discover_root(const std::string& start) {
     fs::path dir(start);
     std::error_code ec;
@@ -26,16 +38,21 @@ std::string Project::discover_root(const std::string& start) {
     if (dir.empty()) {
         dir = ".";
     }
+
     fs::path current = fs::absolute(dir, ec);
     if (ec) {
         return start;
     }
+
+    // `nanox.toml` is the one and only project marker. We deliberately do NOT
+    // treat an unrelated CMakeLists.txt as a marker: walking up from an
+    // arbitrary directory would otherwise attach the editor to whatever parent
+    // happens to contain one (a home directory, for example), and scanning
+    // that as a "project" can take a very long time.
+    const fs::path fallback = current;  // no marker anywhere: scan just this folder
     for (;;) {
         std::error_code marker_ec;
         if (fs::exists(current / "nanox.toml", marker_ec)) {
-            return current.string();
-        }
-        if (fs::exists(current / "CMakeLists.txt", marker_ec)) {
             return current.string();
         }
         const fs::path parent = current.parent_path();
@@ -44,7 +61,7 @@ std::string Project::discover_root(const std::string& start) {
         }
         current = parent;
     }
-    return start;
+    return fallback.string();
 }
 
 std::vector<std::string> Project::source_files() const {

@@ -1,0 +1,7 @@
+# NanoX project marker.
+#
+# The nanox IDE walks up from the directory it was started in until it finds
+# this file and treats that directory as the project root (project explorer,
+# build). Settings such as the package name and entry point will be added here
+# in a later phase.
+name = "nanox"

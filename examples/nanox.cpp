@@ -2,9 +2,10 @@
 //
 //   nanox                       open the IDE with the current directory as
 //                               the project root and an untitled buffer
+//   nanox hello                 open hello.nx directly (a bare name means a
+//                               NanoX source; created on first save)
 //   nanox <file.nx>             open that file; its parent directory is the
-//                               project root (created on first save if it
-//                               does not exist yet)
+//                               project root
 //   nanox <project-dir>         open the IDE on that project directory
 //   nanox --mode=<mode> ...     start in an editing mode:
 //                                 vim     modal, opens in NORMAL (default)
@@ -15,8 +16,9 @@
 // ":set mode <vim|nano|hybrid>" selects one directly.
 //
 // The project root is discovered by walking up from the start directory for
-// nanox.toml (or CMakeLists.txt), so `nanox` run from a build subdirectory
-// still opens the real project instead of showing build artifacts.
+// nanox.toml, so `nanox` run from a build subdirectory still opens the real
+// project instead of showing build artifacts. Without a marker the start
+// directory itself is the project.
 //
 // The CLI is a full-screen TUI (see docs/editor.md):
 //   * project explorer (F2), multi-file editor with tabs
@@ -49,7 +51,9 @@ void print_usage(std::ostream& out) {
            "                  vim     modal editing, opens in NORMAL\n"
            "                  nano    GNU nano keys, always editing\n"
            "                  hybrid  opens editing, ESC gives Vim NORMAL\n"
-           "  -h, --help      show this help\n";
+           "  -h, --help      show this help\n"
+           "\n"
+           "A bare file name means a NanoX source: `nanox hello` opens hello.nx.\n";
 }
 
 }  // namespace
@@ -116,13 +120,15 @@ int main(int argc, char** argv) {
         if (fs::is_directory(arg, ec) && !ec) {
             workspace = nanox::Project::discover_root(arg.string());
         } else {
-            open_file = arg.string();
-            const std::string parent =
-                arg.has_parent_path() ? arg.parent_path().string() : std::string(".");
+            open_file = nanox::Project::resolve_source_path(arg.string());
+            const fs::path resolved(open_file);
+            const std::string parent = resolved.has_parent_path()
+                                           ? resolved.parent_path().string()
+                                           : std::string(".");
             workspace = nanox::Project::discover_root(parent);
             std::ifstream in(open_file, std::ios::binary);
             if (!in) {
-                if (fs::exists(arg, ec) && !ec) {
+                if (fs::exists(resolved, ec) && !ec) {
                     std::cerr << "error: cannot open file: " << open_file << '\n';
                     return 1;
                 }

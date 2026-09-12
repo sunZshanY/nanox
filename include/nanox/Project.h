@@ -36,12 +36,12 @@ public:
 
     const std::string& root() const { return root_; }
 
-    // Walks up from `start` (a directory or file path) looking for a project
-    // marker — `nanox.toml`, falling back to `CMakeLists.txt` — and returns
-    // the directory that contains it. When no marker exists anywhere up the
-    // tree, returns `start` itself (or its parent if `start` is a file). This
-    // keeps the IDE from mistaking a build subdirectory (e.g. `build/`) for
-    // the project root.
+    // Walks up from `start` (a directory or file path) looking for the project
+    // marker `nanox.toml` and returns the directory that contains it. When no
+    // marker exists anywhere up the tree, returns the absolute form of `start`
+    // itself (or its parent if `start` is a file), so the IDE never attaches
+    // itself to an unrelated parent directory. This keeps it from mistaking a
+    // build subdirectory (e.g. `build/`) for the project root.
     static std::string discover_root(const std::string& start);
 
     // All *.nx files under root, recursively (sorted, build folders and
@@ -51,6 +51,13 @@ public:
     // Phase 1 "build": lexes every source file and reports token counts,
     // diagnostics, and elapsed time.
     ProjectAnalysis lex_all() const;
+
+    // CLI convenience: `nanox hello` should open hello.nx directly.
+    // Returns `path` when it already exists. Otherwise a path without a file
+    // extension becomes `path + ".nx"` (the caller creates it on save), so a
+    // bare name always means a NanoX source. A path with an extension is
+    // returned unchanged, so `nanox notes.txt` still means notes.txt.
+    static std::string resolve_source_path(const std::string& path);
 
 private:
     std::string root_;

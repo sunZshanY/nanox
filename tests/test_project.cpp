@@ -97,6 +97,49 @@ NX_TEST_CASE(missing_root_yields_empty_analysis) {
     NX_CHECK_EQ(result.total_tokens(), static_cast<std::size_t>(0));
 }
 
+NX_TEST_CASE(resolve_source_path_appends_nx_to_bare_names) {
+    const nanox_test::TempDir t = make_project();
+    // "main" exists as main.nx on disk: a bare name resolves to the source.
+    NX_CHECK_EQ(Project::resolve_source_path((t.path / "main").string()),
+                (t.path / "main.nx").string());
+    // A missing bare name is still a NanoX source (created on save).
+    NX_CHECK_EQ(Project::resolve_source_path((t.path / "newfile").string()),
+                (t.path / "newfile.nx").string());
+}
+
+NX_TEST_CASE(resolve_source_path_keeps_existing_paths_and_extensions) {
+    const nanox_test::TempDir t = make_project();
+    // An existing path is returned as-is.
+    NX_CHECK_EQ(Project::resolve_source_path((t.path / "main.nx").string()),
+                (t.path / "main.nx").string());
+    // A non-.nx extension is respected: no magic substitution.
+    NX_CHECK_EQ(Project::resolve_source_path((t.path / "notes.txt").string()),
+                (t.path / "notes.txt").string());
+}
+
+NX_TEST_CASE(resolve_source_path_prefers_an_existing_extensionless_file) {
+    nanox_test::TempDir t("nanox_resolve");
+    t.write_file("plain", "x");
+    NX_CHECK_EQ(Project::resolve_source_path((t.path / "plain").string()),
+                (t.path / "plain").string());
+}
+
+NX_TEST_CASE(discover_root_does_not_treat_cmakelists_as_a_marker) {
+    // Walking up to an unrelated parent that happens to contain a
+    // CMakeLists.txt must not attach the editor to it (that parent could be a
+    // home directory with a huge tree); without nanox.toml the start
+    // directory itself is the project root.
+    nanox_test::TempDir t("nanox_nomarker");
+    t.write_file("CMakeLists.txt", "cmake_minimum_required(VERSION 3.20)\n");
+    t.write_file("hello.nx", "let x = 1;\n");
+    NX_CHECK_EQ(Project::discover_root(t.str()), t.path.string());
+}
+
+NX_TEST_CASE(discover_root_of_a_missing_path_stays_in_its_parent) {
+    const nanox_test::TempDir t = make_project();  // no nanox.toml inside
+    NX_CHECK_EQ(Project::discover_root((t.path / "missing").string()), t.path.string());
+}
+
 NX_TEST_CASE(discover_root_finds_nanox_toml) {
     nanox_test::TempDir t("nanox_root");
     t.write_file("nanox.toml", "[project]\n");
@@ -109,23 +152,13 @@ NX_TEST_CASE(discover_root_finds_nanox_toml) {
                 fs::path(t.str()));
 }
 
-NX_TEST_CASE(discover_root_falls_back_to_cmake) {
-    nanox_test::TempDir t("nanox_cmake");
-    t.write_file("CMakeLists.txt", "project(nanox)\n");
-    t.make_dir("build/examples");
-
-    NX_CHECK_EQ(fs::path(Project::discover_root(t.str() + "/build/examples")),
-                fs::path(t.str()));
-}
-
-NX_TEST_CASE(discover_root_nearest_marker_wins) {
+NX_TEST_CASE(discover_root_nearest_nanox_toml_wins) {
     nanox_test::TempDir t("nanox_nested");
     t.write_file("nanox.toml", "[project]\n");
-    t.write_file("sub/CMakeLists.txt", "project(sub)\n");
+    t.write_file("sub/nanox.toml", "[project]\n");
     t.write_file("sub/src/main.nx", "fn main() {}\n");
 
-    // The walk starts at sub/src and finds sub/CMakeLists.txt before ever
-    // reaching the nanox.toml one level up.
+    // The walk starts at sub/src and finds sub/nanox.toml before the one in t.
     NX_CHECK_EQ(fs::path(Project::discover_root(t.str() + "/sub/src")),
                 fs::path(t.str() + "/sub"));
 }
