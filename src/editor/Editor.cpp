@@ -4,6 +4,7 @@
 #include "nanox/Project.h"
 #include "nanox/TokenKind.h"
 #include "nanox/editor/CommandParser.h"
+#include "nanox/editor/DisplayWidth.h"
 #include "nanox/editor/Keymap.h"
 
 #include <algorithm>
@@ -80,42 +81,21 @@ void append_repeat(std::string& out, const std::string& unit, int n) {
     }
 }
 
-// Display width in terminal cells. v1 approximation: every UTF-8 code point
-// counts as 1 cell (continuation bytes are skipped). Exact for ASCII and for
-// every character the TUI itself emits (borders, ▾/▸, ●, ✓, ✗, …, —); wide
-// CJK text is a documented v1 limitation.
-std::size_t display_width(const std::string& s) {
-    std::size_t width = 0;
-    for (std::size_t i = 0; i < s.size(); ++i) {
-        const unsigned char b = static_cast<unsigned char>(s[i]);
-        if ((b & 0xC0) != 0x80) {
-            ++width;  // start of a new code point
-        }
+// Moves `end` backwards until it no longer splits a UTF-8 sequence. The editor
+// viewport budgets a line in bytes, so the cut can land inside a multi-byte
+// character; emitting the leading bytes would make the terminal print a
+// replacement glyph and break the row width.
+std::size_t floor_utf8_boundary(const std::string& s, std::size_t end) {
+    if (end > s.size()) {
+        end = s.size();
     }
-    return width;
+    while (end > 0 && end < s.size() &&
+           (static_cast<unsigned char>(s[end]) & 0xC0) == 0x80) {
+        --end;
+    }
+    return end;
 }
 
-// Truncates to `width` cells, never splitting a multi-byte character.
-std::string truncate(std::string s, std::size_t width) {
-    std::size_t cells = 0;
-    std::size_t i = 0;
-    while (i < s.size() && cells < width) {
-        const unsigned char b = static_cast<unsigned char>(s[i]);
-        ++cells;
-        std::size_t len = 1;
-        if ((b & 0x80) != 0) {
-            len = (b & 0xE0) == 0xC0 ? 2 : (b & 0xF0) == 0xE0 ? 3 : 4;
-            if (i + len > s.size()) {
-                len = s.size() - i;  // trailing partial character: drop it
-            }
-        }
-        i += len;
-    }
-    s.resize(i);
-    return s;
-}
-
-// Truncates to `width` cells and pads with spaces to exactly `width` cells.
 // Parses a plain non-negative decimal, used by the "line,column" prompt.
 // Deliberately not std::stoi: a rejected input must be reported, not thrown.
 bool parse_decimal(const std::string& text, int& out) {
@@ -134,8 +114,8 @@ bool parse_decimal(const std::string& text, int& out) {
 }
 
 std::string cell(const std::string& text, int width) {
-    std::string out = truncate(text, static_cast<std::size_t>(width));
-    append_repeat(out, " ", width - static_cast<int>(display_width(out)));
+    std::string out = truncate_to_width(text, static_cast<std::size_t>(std::max(0, width)));
+    append_repeat(out, " ", std::max(0, width - static_cast<int>(display_width(out))));
     return out;
 }
 
@@ -372,7 +352,7 @@ void Editor::render() {
     if (avail < 0) {
         avail = 0;
     }
-    const std::string shown = truncate(mid, static_cast<std::size_t>(avail));
+    const std::string shown = truncate_to_width(mid, static_cast<std::size_t>(avail));
     out += shown;
     append_repeat(out, " ", avail - static_cast<int>(display_width(shown)));
     out += " ";
@@ -414,8 +394,12 @@ void Editor::render() {
         }
         tab += " ";
         if (tabs_w + static_cast<int>(display_width(tab)) > tab_space) {
-            tabs += " …";
-            tabs_w += 2;
+            // The ellipsis counts against the tab strip too; if even it does
+            // not fit, stop without it rather than overflow the row.
+            if (tabs_w + 2 <= tab_space) {
+                tabs += " …";
+                tabs_w += 2;
+            }
             break;
         }
         if (i == current_file_) {
@@ -454,9 +438,9 @@ void Editor::render() {
             cell_text += node.is_dir ? (node.expanded ? "▾ " : "▸ ") : "  ";
             // Deep nesting must never push the cell past the panel width.
             if (display_width(cell_text) > static_cast<std::size_t>(explorer_w)) {
-                cell_text = truncate(cell_text, static_cast<std::size_t>(explorer_w));
+                cell_text = truncate_to_width(cell_text, static_cast<std::size_t>(explorer_w));
             }
-            const std::string name = truncate(
+            const std::string name = truncate_to_width(
                 node.name,
                 static_cast<std::size_t>(std::max(
                     0, explorer_w - static_cast<int>(display_width(cell_text)))));
@@ -520,8 +504,15 @@ void Editor::render() {
 
             const std::string& line = lines[static_cast<std::size_t>(li)];
             const std::size_t from = static_cast<std::size_t>(cur.first_col);
-            const std::size_t to =
+            // text_w budgets the viewport in bytes, so the cut can land inside
+            // a multi-byte character; pull it back to a character boundary so
+            // the row never ends on a partial sequence.
+            std::size_t to =
                 std::min(line.size(), from + static_cast<std::size_t>(std::max(0, text_w)));
+            to = floor_utf8_boundary(line, to);
+            if (to < from) {
+                to = from;
+            }
             std::size_t p = from;
 
             const std::vector<Span>* spans = nullptr;
@@ -561,10 +552,14 @@ void Editor::render() {
                 rest = line.substr(p, to - p);
             }
             out += rest;
-            // Total width used so far: gutter + printed content; pad the rest.
-            const int used = static_cast<int>(gutter_w) +
-                             static_cast<int>(std::max(from, p) - from) +
-                             static_cast<int>(rest.size());
+            // Pad to the panel width using the printed text's display width,
+            // not its byte count: a CJK line is fewer cells than bytes, and
+            // counting bytes would leave the right border short.
+            std::size_t printed_w = 0;
+            if (to > from) {
+                printed_w = display_width(std::string_view(line).substr(from, to - from));
+            }
+            const int used = static_cast<int>(gutter_w) + static_cast<int>(printed_w);
             out += cell("", std::max(0, editor_w - used));
         }
         out += "│\r\n";

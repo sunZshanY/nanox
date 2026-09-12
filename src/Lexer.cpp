@@ -245,7 +245,31 @@ Token Lexer::lex_operator_or_delimiter() {
         default: break;
     }
 
-    diagnostics_.error(loc, "unexpected character '" + std::string(1, c) + "'");
+    // A non-ASCII character is not part of the language yet, but it must be
+    // consumed as one whole UTF-8 sequence. Emitting one Invalid token per byte
+    // would let the editor drop ANSI codes between the bytes of a character,
+    // which the terminal renders as several replacement glyphs and throws the
+    // frame width off. One sequence = one diagnostic = one highlighted span.
+    const unsigned char lead = static_cast<unsigned char>(c);
+    if ((lead & 0x80) != 0) {
+        int extra = 0;
+        if ((lead & 0xE0) == 0xC0) {
+            extra = 1;
+        } else if ((lead & 0xF0) == 0xE0) {
+            extra = 2;
+        } else if ((lead & 0xF8) == 0xF0) {
+            extra = 3;
+        }
+        for (int i = 0; i < extra && !at_end(); ++i) {
+            if ((static_cast<unsigned char>(current()) & 0xC0) != 0x80) {
+                break;
+            }
+            advance();
+        }
+    }
+
+    diagnostics_.error(
+        loc, "unexpected character '" + std::string(source_.substr(start, pos_ - start)) + "'");
     return make(TokenKind::Invalid, start, pos_ - start, loc);
 }
 

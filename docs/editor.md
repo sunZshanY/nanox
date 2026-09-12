@@ -331,10 +331,14 @@ Where the two editing traditions disagree, the resolution is:
   wraps around the end of the buffer. The prompt line has no history or
   `Left`/`Right` editing — only backspace.
 - **The clipboard is internal to the editor**, not the system clipboard.
-- **Wide characters**: layout math counts display cells (UTF-8 code points),
-  so the TUI's own glyphs (▾/▸, ●, ✓, ✗, …) always align. Double-width CJK
-  glyphs are still approximated as 1 cell, which can misalign the cursor in
-  CJK source files.
+- **Wide characters**: layout math uses a compact East Asian Width table
+  (`DisplayWidth`): combining/zero-width marks count 0, CJK/Hangul/fullwidth
+  glyphs count 2, and everything else -- including the TUI's own ▾/▸, ●, ✓, ✗,
+  … -- counts 1. Every framed row therefore fills exactly `cols` cells, so the
+  borders stay aligned with CJK paths, file names and source. The *cursor*
+  column is still a byte offset (`TextBuffer` has no encoding knowledge), so a
+  cursor sitting after CJK text can be drawn a few cells off within the editor
+  cell; the frame itself is unaffected.
 - **Large files**: the buffer is re-lexed per keystroke; fine for educational
   programs, too slow for very large files.
 
@@ -344,7 +348,8 @@ Where the two editing traditions disagree, the resolution is:
   `test_buffer` (TextBuffer editing, undo/redo, search/replace),
   `test_keymap` (chord notation, per-mode bindings, sequences, rebinding),
   `test_command_parser` (ex-commands), `test_filetree` (FileTree),
-  `test_project` (Project build analysis).
+  `test_project` (Project build analysis), `test_display_width` (East Asian
+  cell widths and truncation).
 - The interactive parts (Terminal, Editor rendering) cannot be unit-tested, but
   they are *not* left to manual checking: `Terminal` accepts redirected stdin as
   raw byte reads, so the whole TUI can be driven over a pipe and asserted on —

@@ -208,6 +208,19 @@ NX_TEST_CASE(single_ampersand_is_an_error) {
     NX_CHECK(r.diag.has_errors());
 }
 
+NX_TEST_CASE(non_ascii_character_is_one_invalid_token) {
+    // Each whole UTF-8 sequence must be a single token: splitting a character
+    // byte-by-byte would let the editor break it with ANSI codes and misalign
+    // the TUI.
+    auto r = lex_all("\xE6\x95\xB0\xE5\xAD\x97");  // U+6570 U+5B57 ("数字")
+    NX_CHECK_EQ(r.tokens.size(), static_cast<std::size_t>(3));  // 2 chars + EOF
+    expect_token(r.tokens[0], TokenKind::Invalid, "\xE6\x95\xB0");
+    expect_token(r.tokens[1], TokenKind::Invalid, "\xE5\xAD\x97");
+    NX_CHECK(r.diag.has_errors());
+    NX_CHECK_EQ(r.diag.diagnostics()[0].message,
+                std::string("unexpected character '\xE6\x95\xB0'"));
+}
+
 // ---------------------------------------------------------------------------
 // Comments
 // ---------------------------------------------------------------------------

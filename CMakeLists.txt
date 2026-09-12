@@ -58,6 +58,7 @@ add_library(nanox_editor
     src/editor/Command.cpp
     src/editor/Keymap.cpp
     src/editor/CommandParser.cpp
+    src/editor/DisplayWidth.cpp
     src/editor/Editor.cpp
 )
 add_library(nanox::editor ALIAS nanox_editor)
