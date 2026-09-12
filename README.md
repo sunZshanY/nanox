@@ -4,10 +4,6 @@
 
 # NanoX
 
-<p align="center">
-  <img src="site/assets/logo.svg" alt="NanoX logo" width="96" height="96">
-</p>
-
 A small, modern, easy-to-learn programming language and its compiler, built
 from scratch in C++17.
 
