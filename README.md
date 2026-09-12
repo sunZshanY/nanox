@@ -172,9 +172,13 @@ See `docs/lexer.md` and `docs/editor.md` for the design rationale and roadmap.
 
 A self-contained static landing page (bilingual English / 简体中文) lives in
 [`site/`](site/): `index.html`, `assets/` and a Cloudflare Pages `_headers`
-file. It has no build step and no external dependencies, so it can be deployed
-to Cloudflare Pages either by pointing the project's output directory at
-`site/` or by uploading that folder directly. Nothing in it depends on GitHub.
+file. It has no build step and no external dependencies, so any static host
+can serve it as-is.
+
+It is deployed to GitHub Pages by `.github/workflows/pages.yml`, which
+publishes the contents of `site/` on every push that touches it. Enabling
+Pages once (Settings → Pages → Source: GitHub Actions) is the only setup
+step. The page itself still depends on nothing but static files.
 
 ## LICENCE 
 
