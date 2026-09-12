@@ -97,8 +97,26 @@ To just dump the token stream of a file, use `lexer_dump`:
 
 ```sh
 ./build/examples/lexer_dump examples/hello.nx
-
 ```
+
+## Installing and packaging
+
+Install the CLI and its docs/example:
+
+```sh
+cmake --install build --prefix /usr/local
+```
+
+Release archives are produced with CPack — TGZ and ZIP on every platform, plus
+a `.deb` on Linux:
+
+```sh
+cpack --config build/CPackConfig.cmake -B dist
+sudo apt install ./dist/nanox_0.1.0_amd64.deb   # on Debian/Ubuntu
+```
+
+Package-manager manifests live in `packaging/` (Homebrew, Scoop, AUR) and are
+filled from the GitHub release artifacts; see `packaging/README.md`.
 
 ## Sample syntax (v1)
 

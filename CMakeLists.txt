@@ -83,3 +83,8 @@ endif()
 if(NANOX_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
+
+# ---------------------------------------------------------------------------
+# Install and packaging (must come after the targets it installs)
+# ---------------------------------------------------------------------------
+include(cmake/Packaging.cmake)

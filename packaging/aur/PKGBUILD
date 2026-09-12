@@ -1,0 +1,36 @@
+# Maintainer: NanoX maintainers
+# Arch Linux (AUR) PKGBUILD for NanoX.
+#
+# This builds from the tagged source tree rather than repackaging a binary, so
+# it follows the AUR guidelines. Update pkgver and refresh sha256sums on every
+# release:
+#
+#   updpkgsums
+#
+pkgname=nanox
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="NanoX programming language: lexer, project tools and IDE-style TUI"
+arch=('x86_64')
+url="https://github.com/sunZshanY/nanox"
+license=('GPL2')
+depends=('gcc-libs')
+makedepends=('cmake' 'ninja' 'gcc')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('<sha256>')
+
+build() {
+    cmake -S "$pkgname-$pkgver" -B build \
+        -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build
+}
+
+check() {
+    ctest --test-dir build --output-on-failure
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+}

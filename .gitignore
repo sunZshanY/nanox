@@ -3,6 +3,11 @@ build/
 cmake-build-*/
 out/
 
+# Install and packaging output
+install-root/
+dist/
+_CPack_Packages/
+
 # IDE files
 .vs/
 .vscode/

@@ -1,0 +1,23 @@
+{
+    "version": "0.1.0",
+    "description": "NanoX programming language: lexer, project tools and IDE-style TUI",
+    "homepage": "https://github.com/sunZshanY/nanox",
+    "license": "GPL-2.0-only",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/sunZshanY/nanox/releases/download/v0.1.0/nanox-0.1.0-win64.zip",
+            "hash": "<sha256>"
+        }
+    },
+    "bin": "bin\\nanox.exe",
+    "checkver": {
+        "github": "https://github.com/sunZshanY/nanox"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/sunZshanY/nanox/releases/download/v$version/nanox-$version-win64.zip"
+            }
+        }
+    }
+}

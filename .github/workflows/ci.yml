@@ -23,3 +23,14 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build -C Debug --output-on-failure
+
+      - name: Install
+        run: cmake --install build --config Debug --prefix install-root
+
+      - name: Smoke test the installed binary
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            Windows) install-root/bin/nanox.exe --help ;;
+            *)       install-root/bin/nanox --help ;;
+          esac
