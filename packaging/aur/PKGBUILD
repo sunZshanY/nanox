@@ -17,7 +17,7 @@ license=('GPL2')
 depends=('gcc-libs')
 makedepends=('cmake' 'ninja' 'gcc')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('<sha256>')
+sha256sums=('3f3fc2cf9be42014cc8387a008df9b2603b9da030521a4d3973854ca50a3fa58')
 
 build() {
     cmake -S "$pkgname-$pkgver" -B build \

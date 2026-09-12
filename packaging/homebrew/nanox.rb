@@ -11,7 +11,7 @@ class Nanox < Formula
   desc "NanoX programming language: lexer, project tools and IDE-style TUI"
   homepage "https://github.com/sunZshanY/nanox"
   url "https://github.com/sunZshanY/nanox/releases/download/v0.1.0/nanox-0.1.0-Darwin.tar.gz"
-  sha256 "<sha256>"
+  sha256 "396e4e30c4dc7449f7f82f9dd26519de00a876ecba68d59de2d7fb7905115b0a"
   license "GPL-2.0-only"
 
   def install
