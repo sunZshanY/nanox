@@ -1,9 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="NanoX">
-  <rect width="64" height="64" rx="14" fill="#0D1117"/>
-  <rect x="9" y="11" width="46" height="42" rx="7" fill="none" stroke="#E6EDF3" stroke-width="3.5"/>
-  <path d="M16.5 40 V21 L31.5 40 V21" fill="none" stroke="#E6EDF3" stroke-width="5"
-        stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M40 34.5 L44.5 39 L40 43.5" fill="none" stroke="#58A6FF" stroke-width="3.5"
-        stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M45.5 43.5 H50" fill="none" stroke="#58A6FF" stroke-width="3.5" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="NanoX">
+  <!-- The repository mark: terminal window, N and a prompt. The prompt keeps
+       the site's neon gradient; the geometry matches assets/logo-icon.svg. -->
+  <defs>
+    <linearGradient id="nx-grad" x1="38" y1="34" x2="52" y2="46"
+                    gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.55" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+  <rect x="9" y="11" width="46" height="42" rx="7" fill="none"
+        stroke="#e6ecf5" stroke-width="3.5"/>
+  <path d="M16.5 40 V21 L31.5 40 V21" fill="none" stroke="#e6ecf5"
+        stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M40 34.5 L44.5 39 L40 43.5" fill="none" stroke="url(#nx-grad)"
+        stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M45.5 43.5 H50" fill="none" stroke="url(#nx-grad)"
+        stroke-width="3.5" stroke-linecap="round"/>
 </svg>

@@ -3,21 +3,43 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
   <title>404 — NanoX</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/styles.css">
+  <script>
+    // Resolve the language before first paint (same logic as index.html).
+    (function () {
+      var lang = null;
+      try { lang = new URLSearchParams(location.search).get("lang"); } catch (e) {}
+      if (lang !== "zh" && lang !== "en") {
+        try { lang = localStorage.getItem("nanox-lang"); } catch (e) {}
+      }
+      if (lang !== "zh" && lang !== "en") {
+        lang = (navigator.language || "en").toLowerCase().indexOf("zh") === 0 ? "zh" : "en";
+      }
+      var root = document.documentElement;
+      root.setAttribute("data-lang", lang);
+      root.setAttribute("lang", lang === "zh" ? "zh-CN" : "en");
+    })();
+  </script>
 </head>
 <body>
-  <main class="error-page">
-    <img src="assets/logo.svg" alt="NanoX logo" width="72" height="72">
-    <h1>404</h1>
-    <p class="lead" style="margin-bottom: 28px;">
-      <span class="en">This page was not found.</span>
-      <span class="zh">未找到该页面。</span>
-    </p>
-    <a class="btn primary" href="index.html">
-      <span class="en">Back home</span><span class="zh">返回首页</span>
-    </a>
+  <main class="section">
+    <div class="wrap" style="display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:7vh;">
+      <img src="assets/logo.svg" alt="NanoX logo" width="76" height="76">
+      <h1 style="font-size:clamp(3rem,8vw,5rem); margin:26px 0 10px;">404</h1>
+      <p class="lead" style="max-width:none;">
+        <span class="en">This page was not found.</span>
+        <span class="zh">未找到该页面。</span>
+      </p>
+      <a class="btn primary" href="index.html" style="margin-top:26px;">
+        <span class="en">Back home</span><span class="zh">返回首页</span>
+      </a>
+    </div>
   </main>
   <script src="assets/app.js"></script>
 </body>
